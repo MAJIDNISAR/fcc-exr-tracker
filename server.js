@@ -7,7 +7,8 @@ const mongoose = require('mongoose')
 const dotenv = require('dotenv').config()
 // Connect to DB
 mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true // useUnifiedTopology: true
+  useNewUrlParser: true,
+  useUnifiedTopology: true
 })
 
 // Use the requirements
@@ -56,9 +57,12 @@ app.post('/api/exercise/add', function (req, res, next) {
   const description = req.body.description
   const duration = req.body.duration
   const date = req.body.date ? new Date(req.body.date) : new Date()
-
+  console.log('userid', userId)
+  console.log('description', description)
+  console.log('duration', duration)
+  console.log('date', date)
   let exerciseData
-
+  console.log('value of the and operation is: ', userId && description && duration)
   if (userId && description && duration) {
     user.findById(userId, function (err, data) {
       if (err) next(err)
@@ -67,7 +71,7 @@ app.post('/api/exercise/add', function (req, res, next) {
         const additionExercise = {
           description: description,
           duration: duration,
-          date: date.toDateString()
+          date: new Date(date)// date.toDateString()
         }
         data.log.push(additionExercise)
         data.save((err, data) => {
@@ -77,7 +81,7 @@ app.post('/api/exercise/add', function (req, res, next) {
             _id: data._id,
             description: description,
             duration: duration,
-            date: date.toDateString()
+            date: new Date(date) // date.toDateString()
           }
           console.log(exerciseData)
           console.log(additionExercise)
@@ -116,8 +120,8 @@ app.get('/api/exercise/log', function (req, res, next) {
             username: data.username,
             count: data.count
           }
-          if (from) displayData.from = from.toDateString()
-          if (to) displayData.to = to.toDateString()
+          if (from) displayData.from = new Date(from)
+          if (to) displayData.to = new Date(to)
           displayData.log = data.log.filter(item => {
             if (from && to) {
               return item.date >= from && item.date <= to
