@@ -98,30 +98,35 @@ app.get('/api/exercise/log', function (req, res, next) {
   const userId = req.query.userId
 
   if (userId) {
-    const from = req.query.from
-    const to = req.query.to
+    const from = new Date(req.query.from)
+    const to = new Date(req.query.to)
     const limit = req.query.limit
     const limitOptions = {}
     if (limit) limitOptions.limit = limit
-
+    console.log('from =', from, 'to=', to, 'limit=', limit)
+    console.log('from =', typeof from, 'to=', typeof to, 'limit=', typeof limit)
+    // console.log(from.toDateString())
     user
       .findById(userId)
-      .populate({
-        path: 'log',
-        match: {},
-        select: '-_id',
-        options: limitOptions
-      })
+      // .populate({
+      //   path: 'log',
+      //   match: {},
+      //   select: '_id',
+      //   options: limitOptions
+      // })
       .exec((err, data) => {
         if (err) next(err)
         if (data) {
+          console.log('unfiltered data====>', data)
+          console.table(data.log)
           const displayData = {
             id: data.id,
             username: data.username,
             count: data.count
+            // log: data.log
           }
-          if (from) displayData.from = new Date(from)
-          if (to) displayData.to = new Date(to)
+          if (from) displayData.from = from.toDateString() // new Date(from) //from.toDateString();
+          if (to) displayData.to = to.toDateString()// new Date(to) //to.toDateString();
           displayData.log = data.log.filter(item => {
             if (from && to) {
               return item.date >= from && item.date <= to
@@ -144,6 +149,60 @@ app.get('/api/exercise/log', function (req, res, next) {
     )
   }
 })
+
+// app.get('/api/exercise/log', function (req, res, next) {
+//   const userId = req.query.userId
+
+//   if (userId) {
+//     const from = req.query.from
+//     const to = req.query.to
+//     const limit = req.query.limit
+//     const limitOptions = {}
+//     console.log('from,to,limit', from, to, limit)
+
+//     if (limit) limitOptions.limit = limit
+
+//     user
+//       .findById(userId)
+//       .populate({
+//         path: 'log',
+//         match: {},
+//         select: '-_id',
+//         options: limitOptions
+//       })
+//       .exec((err, data) => {
+//         if (err) next(err)
+//         if (data) {
+//           console.log('data=>', data)
+//           const displayData = {
+//             id: data.id,
+//             username: data.username,
+//             count: data.count
+//           }
+//           if (from) displayData.from = from.toDateString() // new Date(from)
+//           if (to) displayData.to = to.toDateString()// new Date(to)
+//           displayData.log = data.log.filter(item => {
+//             if (from && to) {
+//               return item.date >= from && item.date <= to
+//             } else if (from) {
+//               return item.date >= from
+//             } else if (to) {
+//               return item.date <= to
+//             } else {
+//               return true
+//             }
+//           })
+//           res.json(displayData)
+//         } else {
+//           next()
+//         }
+//       })
+//   } else {
+//     res.send(
+//       'UserId is required. For example, api/exercise/log?userId=554fejdcdd485fje'
+//     )
+//   }
+// })
 
 app.get('/api/exercise/users', function (req, res) {
   console.log('loading///')
