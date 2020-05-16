@@ -13,6 +13,7 @@
     "express": "^4.17.1",
     "mongodb": "^3.5.7",
     "mongoose": "*",
+    "nodemon": "^2.0.4",
     "shortid": "^2.2.15"
   },
   "engines": {

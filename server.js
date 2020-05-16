@@ -4,14 +4,14 @@ const app = express()
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const mongoose = require('mongoose')
-const dotenv = require('dotenv').config()
-// Connect to DB
+
+//Connect to DB
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
 
-// Use the requirements
+//Use the requirements
 app.use(cors())
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
@@ -19,14 +19,18 @@ app.use(bodyParser.json())
 // let's make json a bit cleaner
 app.set('json spaces', 2)
 
-// Send the HTML
+//Send the HTML
 app.use(express.static('public'))
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 })
 
-// Import model
-const user = require('./schema.js').user
+//Import model
+let user = require('./schema.js').user
+// functions
+function isValidDate(d) {
+  return d instanceof Date && !isNaN(d)
+}
 
 //  /api/exercise/new-user  code
 app.post('/api/exercise/new-user', function (req, res, next) {
@@ -53,25 +57,27 @@ app.post('/api/exercise/new-user', function (req, res, next) {
 
 //  /api/exercise/add  code
 app.post('/api/exercise/add', function (req, res, next) {
+
+  console.log("Header: " + JSON.stringify(resp.headers));
   const userId = req.body.userId
-  const description = req.body.description
-  const duration = req.body.duration
-  const date = req.body.date ? new Date(req.body.date) : new Date()
-  console.log('userid', userId)
-  console.log('description', description)
-  console.log('duration', duration)
-  console.log('date', date)
+  let description = req.body.description
+  let duration = req.body.duration
+  let date = req.body.date ? new Date(req.body.date) : new Date()
+
   let exerciseData
-  console.log('value of the and operation is: ', userId && description && duration)
+
   if (userId && description && duration) {
     user.findById(userId, function (err, data) {
-      if (err) next(err)
+      if (err) {
+        console.log(err)
+        next(err)
+      }
       if (data) {
         data.count = data.count + 1
-        const additionExercise = {
+        let additionExercise = {
           description: description,
           duration: duration,
-          date: new Date(date)// date.toDateString()
+          date: date.toDateString()
         }
         data.log.push(additionExercise)
         data.save((err, data) => {
@@ -81,7 +87,7 @@ app.post('/api/exercise/add', function (req, res, next) {
             _id: data._id,
             description: description,
             duration: duration,
-            date: new Date(date) // date.toDateString()
+            date: date.toDateString()
           }
           console.log(exerciseData)
           console.log(additionExercise)
@@ -96,37 +102,32 @@ app.post('/api/exercise/add', function (req, res, next) {
 
 app.get('/api/exercise/log', function (req, res, next) {
   const userId = req.query.userId
-
+  console.log(userId)
   if (userId) {
-    const from = new Date(req.query.from)
-    const to = new Date(req.query.to)
-    const limit = req.query.limit
+    const from = req.query.from ? new Date(req.query.from) : '';
+    const to = req.query.to ? new Date(req.query.to) : '';
+    const limit = Number(req.query.limit)
     const limitOptions = {}
     if (limit) limitOptions.limit = limit
-    console.log('from =', from, 'to=', to, 'limit=', limit)
-    console.log('from =', typeof from, 'to=', typeof to, 'limit=', typeof limit)
-    // console.log(from.toDateString())
+
     user
       .findById(userId)
-      // .populate({
-      //   path: 'log',
-      //   match: {},
-      //   select: '_id',
-      //   options: limitOptions
-      // })
+      .populate({
+        path: 'log',
+        match: {},
+        select: '-_id',
+        options: limitOptions
+      })
       .exec((err, data) => {
         if (err) next(err)
         if (data) {
-          console.log('unfiltered data====>', data)
-          console.table(data.log)
           const displayData = {
             id: data.id,
             username: data.username,
             count: data.count
-            // log: data.log
           }
-          if (from) displayData.from = from.toDateString() // new Date(from) //from.toDateString();
-          if (to) displayData.to = to.toDateString()// new Date(to) //to.toDateString();
+          if (from) displayData.from = from.toDateString()
+          if (to) displayData.to = to.toDateString()
           displayData.log = data.log.filter(item => {
             if (from && to) {
               return item.date >= from && item.date <= to
@@ -138,6 +139,7 @@ app.get('/api/exercise/log', function (req, res, next) {
               return true
             }
           })
+          console.log(displayData)
           res.json(displayData)
         } else {
           next()
@@ -150,65 +152,50 @@ app.get('/api/exercise/log', function (req, res, next) {
   }
 })
 
-// app.get('/api/exercise/log', function (req, res, next) {
-//   const userId = req.query.userId
+// app.get("/api/exercise/log/:userId", (req, res) => {
+//   user.findById(req.params.userId, (err, data) => {
+//     if (data == null) {
+//       res.send({ error: "User not found" });
+//     } else {
+//       let results = data.log;
 
-//   if (userId) {
-//     const from = req.query.from
-//     const to = req.query.to
-//     const limit = req.query.limit
-//     const limitOptions = {}
-//     console.log('from,to,limit', from, to, limit)
+//       const fromDate = new Date(req.query.from);
+//       const toDate = new Date(req.query.to);
+//       const limit = Number(req.query.limit);
+//       // check if to is defined
+//       if (isValidDate(toDate)) {
+//         results = results.filter(
+//           item => item.date >= fromDate && item.date <= toDate
+//         );
+//         // check if just from defined
+//       } else if (isValidDate(fromDate)) {
+//         results = results.filter(item => item.date >= fromDate);
+//       }
+//       // apply limit if defined and applicable
+//       if (!isNaN(limit) && results.length > limit) {
+//         results = results.slice(0, limit);
+//       }
 
-//     if (limit) limitOptions.limit = limit
+//       res.send({ log: results });
+//     }
+//   });
+// });
 
-//     user
-//       .findById(userId)
-//       .populate({
-//         path: 'log',
-//         match: {},
-//         select: '-_id',
-//         options: limitOptions
-//       })
-//       .exec((err, data) => {
-//         if (err) next(err)
-//         if (data) {
-//           console.log('data=>', data)
-//           const displayData = {
-//             id: data.id,
-//             username: data.username,
-//             count: data.count
-//           }
-//           if (from) displayData.from = from.toDateString() // new Date(from)
-//           if (to) displayData.to = to.toDateString()// new Date(to)
-//           displayData.log = data.log.filter(item => {
-//             if (from && to) {
-//               return item.date >= from && item.date <= to
-//             } else if (from) {
-//               return item.date >= from
-//             } else if (to) {
-//               return item.date <= to
-//             } else {
-//               return true
-//             }
-//           })
-//           res.json(displayData)
-//         } else {
-//           next()
-//         }
-//       })
-//   } else {
-//     res.send(
-//       'UserId is required. For example, api/exercise/log?userId=554fejdcdd485fje'
-//     )
-//   }
-// })
+app.get('/api/exercise/users', function (req, res) {
+  user.find({}, function (err, data) {
+    if (err) err
+    let obj = data.map(item => {
+      return `username:${item.username}, _id:${item._id}`
+    })
+    res.json(obj)
+  })
+})
 
 app.get('/api/exercise/users', function (req, res) {
   console.log('loading///')
   user.find({}, function (err, data) {
     if (err) err
-    const obj = data.map(item => {
+    let obj = data.map(item => {
       return `username:${item.username}, _id:${item._id}`
     })
     res.json(obj)
@@ -233,7 +220,7 @@ app.use((err, req, res, next) => {
   } else {
     // generic or custom error
     errCode = err.status || 500
-    errMessage = err.message || 'Internal Server Error'
+    errMessage = err.message || 'Internal Server Error';
   }
   res
     .status(errCode)
